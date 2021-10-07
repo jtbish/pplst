@@ -3,7 +3,7 @@ import numpy as np
 from .hyperparams import get_hyperparam as get_hp
 from .rng import get_rng
 
-np.seterr(all="raise")
+np.seterr(divide="raise", over="raise", invalid="raise")
 
 _INIT_PAYOFF_VAR = 0
 _INIT_PAYOFF_STDEV = 0

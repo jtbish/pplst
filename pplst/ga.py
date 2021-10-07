@@ -49,7 +49,6 @@ def _uniform_crossover_on_rules(parent_a, parent_b, selectable_actions):
     for idx in range(0, num_rules):
         if get_rng().random() < get_hp("p_cross_swap"):
             _swap(child_a_rules, child_b_rules, idx)
-
     assert len(child_a_rules) == num_rules
     assert len(child_b_rules) == num_rules
 
@@ -76,7 +75,6 @@ def mutate(indiv, encoding):
         cond_alleles = rule.condition.alleles
         mut_cond_alleles = encoding.mutate_condition_alleles(cond_alleles)
         mut_cond = Condition(mut_cond_alleles, encoding)
-        # TODO should action mutations be allowed??
         mut_action = _mutate_action(rule.action, indiv.selectable_actions)
         rule.condition = mut_cond
         rule.action = mut_action

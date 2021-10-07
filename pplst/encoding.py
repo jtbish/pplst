@@ -67,6 +67,7 @@ class UnorderedBoundEncodingABC(EncodingABC, metaclass=abc.ABCMeta):
 
     def mutate_condition_alleles(self, alleles):
         assert len(alleles) % 2 == 0
+        # iterate in allele pairs (i.e. over each dim)
         allele_pairs = [(alleles[i], alleles[i + 1])
                         for i in range(0, len(alleles), 2)]
         mut_alleles = []
@@ -74,8 +75,7 @@ class UnorderedBoundEncodingABC(EncodingABC, metaclass=abc.ABCMeta):
             for allele in allele_pair:
                 if get_rng().random() < get_hp("p_mut"):
                     noise = self._gen_mutation_noise(dim)
-                    sign = get_rng().choice([-1, 1])
-                    mut_allele = allele + sign * noise
+                    mut_allele = (allele + noise)
                     mut_allele = max(mut_allele, dim.lower)
                     mut_allele = min(mut_allele, dim.upper)
                     mut_alleles.append(mut_allele)
@@ -100,21 +100,23 @@ class IntegerUnorderedBoundEncoding(UnorderedBoundEncodingABC):
         super().__init__(obs_space)
 
     def _init_random_allele_for_dim(self, dim):
-        return get_rng().randint(low=dim.lower, high=(dim.upper + 2))
+        return get_rng().randint(low=dim.lower, high=(dim.upper + 1))
 
     def calc_condition_generality(self, cond_intervals):
         # condition generality calc as in
         # Wilson '00 Mining Oblique Data with XCS
         numer = sum([interval.span for interval in cond_intervals])
-        denom = sum([(dim.upper - dim.lower + 1) for dim in self._obs_space])
+        denom = sum([dim.span for dim in self._obs_space])
         generality = numer / denom
         assert self._GENERALITY_LB_EXCL < generality <= _GENERALITY_UB_INCL
         return generality
 
     def _gen_mutation_noise(self, dim=None):
-        # integer ~ Geo(p): supported on integers >= 1 i.e.
+        # base noise is integer ~ Geo(p): supported on integers >= 1 i.e.
         # "shifted" geom. dist.
-        return get_rng().geometric(p=self._MUT_GEOM_P)
+        geom_noise = get_rng().geometric(p=self._MUT_GEOM_P)
+        sign = get_rng().choice([-1, 1])
+        return (sign * geom_noise)
 
 
 class RealUnorderedBoundEncoding(UnorderedBoundEncodingABC):
@@ -130,16 +132,13 @@ class RealUnorderedBoundEncoding(UnorderedBoundEncodingABC):
 
     def calc_condition_generality(self, cond_intervals):
         numer = sum([interval.span for interval in cond_intervals])
-        denom = sum([(dim.upper - dim.lower) for dim in self._obs_space])
+        denom = sum([dim.span for dim in self._obs_space])
         generality = numer / denom
         assert self._GENERALITY_LB_INCL <= generality <= _GENERALITY_UB_INCL
         return generality
 
     def _gen_mutation_noise(self, dim):
-        # m_0 interpreted as fraction of dim span to draw uniform random
-        # noise from
-        dim_span = (dim.upper - dim.lower)
-        m_nought = get_hp("m_nought")
-        assert 0.0 < m_nought <= 1.0
-        mut_high = m_nought * dim_span
-        return get_rng().uniform(low=0, high=mut_high)
+        """For reals, mutation is Gaussian noise, mean=0, stdev dependent on
+        magnitude of dim operating on."""
+        stdev = (get_hp("mut_sigma_pcent") * dim.span)
+        return get_rng().normal(loc=0.0, scale=stdev)

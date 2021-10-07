@@ -3,7 +3,7 @@ import numpy as np
 from .hyperparams import get_hyperparam as get_hp
 from .util import augment_obs
 
-np.seterr(all="raise")
+np.seterr(divide="raise", over="raise", invalid="raise")
 
 
 def update_action_set(action_set, payoff, obs):
@@ -27,7 +27,8 @@ def _update_payoff_prediction(rule, payoff, aug_obs, proc_obs):
 
 
 def _update_payoff_var_and_stdev(rule, payoff, aug_obs):
-    """As per SAMUEL"""
+    """As per SAMUEL: i.e. from 'Learning sequential decision rules using
+    simulation models and competition' - Grefenstette."""
     eta = get_hp("eta")
     pred = rule.prediction(aug_obs)
     # v_i = (1 - c)*v_i + c*(mu_i - r)^2

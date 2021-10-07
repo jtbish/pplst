@@ -26,9 +26,11 @@ class PPLST:
         self._reinf_env = reinf_env
         # environment for doing perf assessment for GA fitness
         self._perf_env = perf_env
-        self._selectable_actions = self._env.action_space
+        assert (self._reinf_env.action_space == self._perf_env.action_space)
+        self._selectable_actions = self._reinf_env.action_space
         self._encoding = encoding
-        register_hyperparams(hyperparams_dict)
+        self._hyperparams_dict = hyperparams_dict
+        register_hyperparams(self._hyperparams_dict)
         seed_rng(get_hp("seed"))
         self._pop = None
 
@@ -61,23 +63,25 @@ class PPLST:
 
     def _run_pop_learning_parallel(self, pop):
         # process parallelism for doing "learning" for each indiv in pop
-        num_reinf_rollouts = get_hp("num_reinf_rollouts")
-        num_perf_rollouts = get_hp("num_perf_rollouts")
-        gamma = get_hp("gamma")
-
         with Pool(_NUM_CPUS) as pool:
             updated_pop = pool.starmap(
                 self._run_indiv_learning,
-                [(indiv, num_reinf_rollouts, num_perf_rollouts, gamma)
+                [(indiv, self._hyperparams_dict)
                  for indiv in pop])
 
         return updated_pop
 
-    def _run_indiv_learning(self, indiv, num_reinf_rollouts, num_perf_rollouts,
-                            gamma):
+    def _run_indiv_learning(self, indiv, hyperparams_dict):
         """'Learning' has two stages: first, update payoff estimates (do MC RL)
         for rules within an Indiv via trajectories in an inner loop.
         Then eval the perf (fitness) of the Indiv as a whole for GA to use."""
+
+        # but first re-register hyperparams globally for this process. (bit
+        # hacky, maybe change later)
+        register_hyperparams(hyperparams_dict)
+        num_reinf_rollouts = get_hp("num_reinf_rollouts")
+        num_perf_rollouts = get_hp("num_perf_rollouts")
+        gamma = get_hp("gamma")
 
         self._reinforce_rules_in_indiv(indiv, num_reinf_rollouts, gamma)
         self._assess_indiv_perf(indiv, num_perf_rollouts, gamma)
@@ -89,16 +93,16 @@ class PPLST:
 
     def _reinforce_rules_in_indiv(self, indiv, num_reinf_rollouts, gamma):
         # reseed iod rng for reinf env so each indiv has own seeded sequence of
-        # reinf obs
-        logging.debug("Re-seeding reinf env with iod rng seed {indiv.id}")
+        # reinf trajectories
         self._reinf_env.reseed_iod_rng(new_seed=indiv.id)
+
         # Sample a trajectory then reinforce it one-at-a-time
         for _ in range(num_reinf_rollouts):
             trajectory = self._gen_trajectory_using_indiv(
                 self._reinf_env, indiv)
             self._reinforce_trajectory(trajectory, gamma)
 
-    def _gen_trajectory_using_indiv(reinf_env, indiv):
+    def _gen_trajectory_using_indiv(self, reinf_env, indiv):
         trajectory = []
         obs = reinf_env.reset()
         while not reinf_env.is_terminal():
