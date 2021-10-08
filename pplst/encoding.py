@@ -1,5 +1,6 @@
 import abc
 import logging
+import math
 
 from rlenvs.obs_space import IntegerObsSpace, RealObsSpace
 
@@ -92,8 +93,7 @@ class UnorderedBoundEncodingABC(EncodingABC, metaclass=abc.ABCMeta):
 class IntegerUnorderedBoundEncoding(UnorderedBoundEncodingABC):
     _GENERALITY_LB_EXCL = 0
     _INTERVAL_CLS = IntegerInterval
-    # 50% chance of mutating allele by +-1, 50% of mutating more
-    _MUT_GEOM_P = 0.5
+    _GEOM_MUT_TARGET_MASS = 0.99
 
     def __init__(self, obs_space):
         assert isinstance(obs_space, IntegerObsSpace)
@@ -111,10 +111,17 @@ class IntegerUnorderedBoundEncoding(UnorderedBoundEncodingABC):
         assert self._GENERALITY_LB_EXCL < generality <= _GENERALITY_UB_INCL
         return generality
 
-    def _gen_mutation_noise(self, dim=None):
+    def _gen_mutation_noise(self, dim):
+        """'Dimension aware' geometric mutation."""
         # base noise is integer ~ Geo(p): supported on integers >= 1 i.e.
         # "shifted" geom. dist.
-        geom_noise = get_rng().geometric(p=self._MUT_GEOM_P)
+        # set p for geom dist according to satisfying target prob.
+        # mass on CDF after k trials, k = floor(dim.span / 2), i.e. satisfy
+        # target mass over half dim span
+        k = math.floor(dim.span / 2)
+        # rearranged CDF eqn. to solve for p
+        p = 1 - (1 - self._GEOM_MUT_TARGET_MASS)**(1/k)
+        geom_noise = get_rng().geometric(p)
         sign = get_rng().choice([-1, 1])
         return (sign * geom_noise)
 
