@@ -2,7 +2,6 @@ from .condition import Condition
 from .hyperparams import get_hyperparam as get_hp
 from .indiv import Indiv
 from .rng import get_rng
-from .rule import Rule
 
 _MIN_TOURN_SIZE = 2
 
@@ -24,17 +23,11 @@ def tournament_selection(pop):
 
 
 def crossover(parent_a, parent_b, selectable_actions):
-    # TODO update crossover method
     if get_rng().random() < get_hp("p_cross"):
         return _uniform_crossover_on_rules(parent_a, parent_b,
                                            selectable_actions)
     else:
         return _clone_parents(parent_a, parent_b, selectable_actions)
-
-
-def _clustered_crossover(parent_a, parent_b, selectable_actions):
-    # TODO implement
-    pass
 
 
 def _uniform_crossover_on_rules(parent_a, parent_b, selectable_actions):
