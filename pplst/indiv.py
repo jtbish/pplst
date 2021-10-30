@@ -1,6 +1,7 @@
 from .error import UnsetPropertyError
 from .inference import infer_action
 from .ids import get_next_indiv_id
+from .hyperparams import get_hyperparam as get_hp
 
 
 class Indiv:
@@ -10,6 +11,9 @@ class Indiv:
         # *most recent* perf assessment result
         self._perf_assessment_res = None
         self._id = get_next_indiv_id()
+        # cache x_nought so inference can be done after pickling without
+        # relying on global hp registry
+        self._x_nought = get_hp("x_nought")
 
     @property
     def rules(self):
@@ -41,6 +45,10 @@ class Indiv:
     @property
     def id(self):
         return self._id
+
+    @property
+    def x_nought(self):
+        return self._x_nought
 
     def select_action(self, obs):
         """Performs inference on obs using rules to predict an action;

@@ -7,7 +7,7 @@ np.seterr(divide="raise", over="raise", invalid="raise")
 
 
 def update_action_set(action_set, payoff, obs):
-    aug_obs = augment_obs(obs)
+    aug_obs = augment_obs(obs, x_nought=get_hp("x_nought"))
     proc_obs = _process_aug_obs(aug_obs)
     for rule in action_set:
         _update_payoff_prediction(rule, payoff, aug_obs, proc_obs)

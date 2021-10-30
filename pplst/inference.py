@@ -17,15 +17,16 @@ def infer_action_and_action_set(indiv, obs):
 def _infer_action_and_action_set(indiv, obs):
     match_set = _gen_match_set(indiv, obs)
     if not _is_empty(match_set):
-        action_sets = _gen_action_sets(match_set, indiv.selectable_actions)
-        aug_obs = augment_obs(obs)
+        action_sets = _gen_action_sets(
+            match_set, selectable_actions=indiv.selectable_actions)
+        aug_obs = augment_obs(obs, x_nought=indiv.x_nought)
 
-        action = _get_best_action(action_sets, aug_obs)
-        action_set = action_sets[action]
+        best_action = _get_best_action(action_sets, aug_obs)
+        action_set = action_sets[best_action]
     else:
-        action = NULL_ACTION
+        best_action = NULL_ACTION
         action_set = None
-    return (action, action_set)
+    return (best_action, action_set)
 
 
 def _gen_match_set(indiv, obs):
@@ -55,7 +56,6 @@ def _get_max_action_strengths(action_sets, aug_obs):
         if not _is_empty(action_set):
             max_a_strengths[a] = max(
                 [rule.strength(aug_obs) for rule in action_set])
-    assert len(max_a_strengths) > 0
     return max_a_strengths
 
 
