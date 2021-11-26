@@ -1,10 +1,21 @@
+import abc
+
 from .error import UnsetPropertyError
 from .inference import infer_action
 from .ids import get_next_indiv_id
 from .hyperparams import get_hyperparam as get_hp
 
 
-class Indiv:
+def make_indiv(rules, selectable_actions):
+    use_policy_cache = get_hp("use_indiv_policy_cache")
+    if use_policy_cache:
+        cls = PolicyCacheIndiv
+    else:
+        cls = Indiv
+    return cls(rules, selectable_actions)
+
+
+class IndivABC(metaclass=abc.ABCMeta):
     def __init__(self, rules, selectable_actions):
         self._rules = list(rules)
         self._selectable_actions = selectable_actions
@@ -25,10 +36,7 @@ class Indiv:
 
     @property
     def perf_assessment_res(self):
-        if self._perf_assessment_res is None:
-            raise UnsetPropertyError
-        else:
-            return self._perf_assessment_res
+        return self._perf_assessment_res
 
     @perf_assessment_res.setter
     def perf_assessment_res(self, val):
@@ -53,7 +61,27 @@ class Indiv:
     def select_action(self, obs):
         """Performs inference on obs using rules to predict an action;
         i.e. making Indiv act as a policy."""
-        return infer_action(self, obs)
+        raise NotImplementedError
 
     def __len__(self):
         return len(self._rules)
+
+
+class Indiv(IndivABC):
+    def select_action(self, obs):
+        return infer_action(self, obs)
+
+
+class PolicyCacheIndiv(IndivABC):
+    def __init__(self, rules, selectable_actions):
+        super().__init__(rules, selectable_actions)
+        self._policy_cache = {}
+
+    def select_action(self, obs):
+        obs_hashable = tuple(obs)
+        try:
+            return self._policy_cache[obs_hashable]
+        except KeyError:
+            action = infer_action(self, obs)
+            self._policy_cache[obs_hashable] = action
+            return action

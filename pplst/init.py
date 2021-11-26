@@ -1,6 +1,6 @@
 from .condition import Condition
 from .hyperparams import get_hyperparam as get_hp
-from .indiv import Indiv
+from .indiv import make_indiv
 from .rng import get_rng
 from .rule import Rule
 
@@ -17,7 +17,7 @@ def _init_indiv(encoding, selectable_actions):
     rules = [
         _init_rule(encoding, selectable_actions) for _ in range(num_rules)
     ]
-    return Indiv(rules, selectable_actions)
+    return make_indiv(rules, selectable_actions)
 
 
 def _init_rule(encoding, selectable_actions):

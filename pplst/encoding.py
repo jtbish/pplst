@@ -86,7 +86,8 @@ class UnorderedBoundEncodingABC(EncodingABC, metaclass=abc.ABCMeta):
         return mut_alleles
 
     @abc.abstractmethod
-    def _gen_mutation_noise(self, dim=None):
+    def _gen_mutation_noise(self, dim):
+        """Mutation noise, *inclusive of sign*"""
         raise NotImplementedError
 
 

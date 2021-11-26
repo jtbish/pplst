@@ -1,6 +1,6 @@
 from .condition import Condition
 from .hyperparams import get_hyperparam as get_hp
-from .indiv import Indiv
+from .indiv import make_indiv
 from .rng import get_rng
 
 _MIN_TOURN_SIZE = 2
@@ -45,8 +45,8 @@ def _uniform_crossover_on_rules(parent_a, parent_b, selectable_actions):
     assert len(child_a_rules) == num_rules
     assert len(child_b_rules) == num_rules
 
-    child_a = Indiv(child_a_rules, selectable_actions)
-    child_b = Indiv(child_b_rules, selectable_actions)
+    child_a = make_indiv(child_a_rules, selectable_actions)
+    child_b = make_indiv(child_b_rules, selectable_actions)
     return (child_a, child_b)
 
 
@@ -55,9 +55,10 @@ def _swap(seq_a, seq_b, idx):
 
 
 def _clone_parents(parent_a, parent_b, selectable_actions):
-    """Re-make Indiv objects so ids can be updated properly."""
-    child_a = Indiv(parent_a.rules, selectable_actions)
-    child_b = Indiv(parent_b.rules, selectable_actions)
+    """Re-make make_indiv objects so ids (and possibly policy cache) can be
+    inited properly."""
+    child_a = make_indiv(parent_a.rules, selectable_actions)
+    child_b = make_indiv(parent_b.rules, selectable_actions)
     return (child_a, child_b)
 
 
@@ -65,11 +66,15 @@ def mutate(indiv, encoding):
     """Mutates condition and action of rules contained within indiv by
     resetting them in Rule object."""
     for rule in indiv.rules:
+
         cond_alleles = rule.condition.alleles
         mut_cond_alleles = encoding.mutate_condition_alleles(cond_alleles)
-        mut_cond = Condition(mut_cond_alleles, encoding)
+        cond_alleles_changed = (mut_cond_alleles != cond_alleles)
+        # only need to remake condition if alleles have changed
+        if cond_alleles_changed:
+            rule.condition = Condition(mut_cond_alleles, encoding)
+
         mut_action = _mutate_action(rule.action, indiv.selectable_actions)
-        rule.condition = mut_cond
         rule.action = mut_action
 
 

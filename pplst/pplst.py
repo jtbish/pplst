@@ -106,6 +106,9 @@ class PPLST:
         trajectory = []
         obs = reinf_env.reset()
         while not reinf_env.is_terminal():
+            # do whole inference process here, i.e. no policy caching even if
+            # indiv has it enabled. this is because the policy is mutating each
+            # trajectory generated
             (action, action_set) = infer_action_and_action_set(indiv, obs)
             if action != NULL_ACTION:
                 assert action_set is not None
@@ -116,6 +119,7 @@ class PPLST:
                 obs = reinf_env_response.obs
             else:
                 # trajectory is truncated
+                assert action_set is None
                 break
         return trajectory
 
