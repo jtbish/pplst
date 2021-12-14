@@ -61,13 +61,20 @@ class PPLST:
         self._pop = self._run_pop_learning_parallel(new_pop)
         return self._pop
 
+    def _run_pop_learning_serial(self, pop):
+        """For debugging / profiling"""
+        updated_pop = [
+            self._run_indiv_learning(indiv, self._hyperparams_dict)
+            for indiv in pop
+        ]
+        return updated_pop
+
     def _run_pop_learning_parallel(self, pop):
         # process parallelism for doing "learning" for each indiv in pop
         with Pool(_NUM_CPUS) as pool:
-            updated_pop = pool.starmap(
-                self._run_indiv_learning,
-                [(indiv, self._hyperparams_dict)
-                 for indiv in pop])
+            updated_pop = pool.starmap(self._run_indiv_learning,
+                                       [(indiv, self._hyperparams_dict)
+                                        for indiv in pop])
 
         return updated_pop
 
