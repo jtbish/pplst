@@ -99,14 +99,16 @@ class PPLST:
         return indiv
 
     def _reinforce_rules_in_indiv(self, indiv, num_reinf_rollouts, gamma):
-        # reseed iod rng for reinf env so each indiv has own seeded sequence of
-        # reinf trajectories
-        self._reinf_env.reseed_iod_rng(new_seed=indiv.id)
+        # copy then reseed iod rng for reinf env so each indiv has own seeded
+        # seq. of reinf trajectories and state of transition probs in env not
+        # mutated between indivs, therefore gives same result for diff. num. of
+        # CPUs used.
+        reinf_env = copy.deepcopy(self._reinf_env)
+        reinf_env.reseed_iod_rng(new_seed=indiv.id)
 
         # Sample a trajectory then reinforce it one-at-a-time
         for _ in range(num_reinf_rollouts):
-            trajectory = self._gen_trajectory_using_indiv(
-                self._reinf_env, indiv)
+            trajectory = self._gen_trajectory_using_indiv(reinf_env, indiv)
             self._reinforce_trajectory(trajectory, gamma)
 
     def _gen_trajectory_using_indiv(self, reinf_env, indiv):
