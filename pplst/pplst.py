@@ -121,7 +121,7 @@ class PPLST:
         while not reinf_env.is_terminal():
             # do whole inference process here, i.e. no policy caching even if
             # indiv has it enabled. this is because the policy is mutating each
-            # trajectory generated
+            # trajectory generated so *probably* not worth it
             (action, action_set) = infer_action_and_action_set(indiv, obs)
             if action != NULL_ACTION:
                 assert action_set is not None
