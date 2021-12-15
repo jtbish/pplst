@@ -51,6 +51,9 @@ class PPLST:
         for _ in range(num_breeding_rounds):
             parent_a = copy.deepcopy(tournament_selection(self._pop))
             parent_b = copy.deepcopy(tournament_selection(self._pop))
+            # check parents inited properly as new objs.
+            assert parent_a.perf_assessment_res is None
+            assert parent_b.perf_assessment_res is None
             (child_a, child_b) = crossover(parent_a, parent_b,
                                            self._selectable_actions)
             for child in (child_a, child_b):

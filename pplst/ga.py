@@ -39,6 +39,10 @@ def _uniform_crossover_on_rules(parent_a, parent_b, selectable_actions):
     child_a_rules = parent_a.rules
     child_b_rules = parent_b.rules
 
+    # shuffle rules since not ordered
+    get_rng().shuffle(child_a_rules)
+    get_rng().shuffle(child_b_rules)
+
     for idx in range(0, num_rules):
         if get_rng().random() < get_hp("p_cross_swap"):
             _swap(child_a_rules, child_b_rules, idx)
