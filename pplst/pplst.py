@@ -79,7 +79,6 @@ class PPLST:
             updated_pop = pool.starmap(self._run_indiv_learning,
                                        [(indiv, self._hyperparams_dict)
                                         for indiv in pop])
-
         return updated_pop
 
     def _run_indiv_learning(self, indiv, hyperparams_dict):
@@ -103,12 +102,13 @@ class PPLST:
         return indiv
 
     def _reinforce_rules_in_indiv(self, indiv, num_reinf_rollouts, gamma):
-        # copy then reseed iod rng for reinf env so each indiv has own seeded
-        # seq. of reinf trajectories and state of transition probs in env not
+        # copy then reseed reinf env so each indiv has own seeded
+        # seq. of reinf trajectories and state of reinf env not
         # mutated between indivs, therefore gives same result for diff. num. of
         # CPUs used.
         reinf_env = copy.deepcopy(self._reinf_env)
         reinf_env.reseed_iod_rng(new_seed=indiv.id)
+        reinf_env.reseed_wrapped_rng(new_seed=indiv.id)
 
         # Sample a trajectory then reinforce it one-at-a-time
         for _ in range(num_reinf_rollouts):
