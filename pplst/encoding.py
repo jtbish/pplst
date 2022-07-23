@@ -1,9 +1,9 @@
 import abc
-import logging
 import math
 
 from rlenvs.obs_space import IntegerObsSpace, RealObsSpace
 
+from .condition import Condition
 from .hyperparams import get_hyperparam as get_hp
 from .interval import IntegerInterval, RealInterval
 from .rng import get_rng
@@ -20,7 +20,7 @@ class EncodingABC(metaclass=abc.ABCMeta):
         return self._obs_space
 
     @abc.abstractmethod
-    def init_condition_alleles(self):
+    def init_condition(self):
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -37,17 +37,22 @@ class EncodingABC(metaclass=abc.ABCMeta):
 
 
 class UnorderedBoundEncodingABC(EncodingABC, metaclass=abc.ABCMeta):
-    def init_condition_alleles(self):
+    def init_condition(self):
         num_alleles = len(self._obs_space) * 2
-        alleles = []
+        cond_alleles = []
         for dim in self._obs_space:
-            for _ in range(2):
-                alleles.append(self._init_random_allele_for_dim(dim))
-        assert len(alleles) == num_alleles
-        return alleles
+            (lower, upper) = self._init_alleles_for_dim(dim)
+            dim_alleles = [lower, upper]
+            # to avoid bias, insert alleles into genotype in random order
+            get_rng().shuffle(dim_alleles)
+            for allele in dim_alleles:
+                cond_alleles.append(allele)
+        assert len(cond_alleles) == num_alleles
+        return Condition(cond_alleles, self)
 
     @abc.abstractmethod
-    def _init_random_allele_for_dim(self, dim):
+    def _init_alleles_for_dim(self, dim):
+        """Return (lower, upper) init alleles, with lower <= upper."""
         raise NotImplementedError
 
     def decode(self, cond_alleles):
@@ -100,8 +105,15 @@ class IntegerUnorderedBoundEncoding(UnorderedBoundEncodingABC):
         assert isinstance(obs_space, IntegerObsSpace)
         super().__init__(obs_space)
 
-    def _init_random_allele_for_dim(self, dim):
-        return get_rng().randint(low=dim.lower, high=(dim.upper + 1))
+    def _init_alleles_for_dim(self, dim):
+        anchor = get_rng().randint(low=dim.lower, high=(dim.upper + 1))
+        r_nought = get_hp("r_nought")
+        # rand integer ~ [0, r_nought]
+        lower = anchor - get_rng().randint(low=0, high=(r_nought + 1))
+        upper = anchor + get_rng().randint(low=0, high=(r_nought + 1))
+        lower = max(lower, dim.lower)
+        upper = min(upper, dim.upper)
+        return (lower, upper)
 
     def calc_condition_generality(self, cond_intervals):
         # condition generality calc as in
@@ -121,7 +133,7 @@ class IntegerUnorderedBoundEncoding(UnorderedBoundEncodingABC):
         # target mass over half dim span
         k = math.floor(dim.span / 2)
         # rearranged CDF eqn. to solve for p
-        p = 1 - (1 - self._GEOM_MUT_TARGET_MASS)**(1/k)
+        p = 1 - (1 - self._GEOM_MUT_TARGET_MASS)**(1 / k)
         geom_noise = get_rng().geometric(p)
         sign = get_rng().choice([-1, 1])
         return (sign * geom_noise)
@@ -130,13 +142,24 @@ class IntegerUnorderedBoundEncoding(UnorderedBoundEncodingABC):
 class RealUnorderedBoundEncoding(UnorderedBoundEncodingABC):
     _GENERALITY_LB_INCL = 0
     _INTERVAL_CLS = RealInterval
+    _MUT_MEAN = 0.0
 
     def __init__(self, obs_space):
         assert isinstance(obs_space, RealObsSpace)
         super().__init__(obs_space)
 
-    def _init_random_allele_for_dim(self, dim):
-        return get_rng().uniform(low=dim.lower, high=dim.upper)
+    def _init_alleles_for_dim(self, dim):
+        anchor = get_rng().uniform(low=dim.lower, high=dim.upper)
+        # for continuous space, r_nought interpreted as fraction of dim span
+        # over which to draw noise from for lower/upper alleles
+        r_nought = get_hp("r_nought")
+        assert 0.0 < r_nought <= 1.0
+        noise_high = (r_nought * dim.span)
+        lower = anchor - get_rng().uniform(low=0, high=noise_high)
+        upper = anchor + get_rng().uniform(low=0, high=noise_high)
+        lower = max(lower, dim.lower)
+        upper = min(upper, dim.upper)
+        return (lower, upper)
 
     def calc_condition_generality(self, cond_intervals):
         numer = sum([interval.span for interval in cond_intervals])
@@ -148,5 +171,5 @@ class RealUnorderedBoundEncoding(UnorderedBoundEncodingABC):
     def _gen_mutation_noise(self, dim):
         """For reals, mutation is Gaussian noise, mean=0, stdev dependent on
         magnitude of dim operating on."""
-        stdev = (get_hp("mut_sigma_pcent") * dim.span)
-        return get_rng().normal(loc=0.0, scale=stdev)
+        stdev = (get_hp("mut_sigma_pcnt") * dim.span)
+        return get_rng().normal(loc=self._MUT_MEAN, scale=stdev)

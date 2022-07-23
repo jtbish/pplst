@@ -1,3 +1,7 @@
+_SPAN_FRAC_MIN_INCL = 0
+_SPAN_FRAC_MAX_INCL = 1
+
+
 class Condition:
     def __init__(self, alleles, encoding):
         self._alleles = list(alleles)
@@ -5,7 +9,8 @@ class Condition:
         # cache the phenotype
         self._phenotype = self._encoding.decode(self._alleles)
         self._matching_idx_order = \
-            self._calc_matching_idx_order(self._phenotype)
+            self._calc_matching_idx_order(self._phenotype,
+                                          obs_space=self._encoding.obs_space)
 
     @property
     def alleles(self):
@@ -15,15 +20,21 @@ class Condition:
     def phenotype(self):
         return self._phenotype
 
-    def _calc_matching_idx_order(self, phenotype):
-        # first calc spans of all intervals
-        spans_with_idxs = list(
-            enumerate([interval.span for interval in phenotype]))
-        # then sort the spans in ascending order
-        sorted_spans_with_idxs = sorted(spans_with_idxs,
-                                        key=lambda tup: tup[1],
-                                        reverse=False)
-        matching_idx_order = [tup[0] for tup in sorted_spans_with_idxs]
+    def _calc_matching_idx_order(self, phenotype, obs_space):
+        # first calc "span fracs" of all intervals in phenotype relative to
+        # each dim span
+        assert len(phenotype) == len(obs_space)
+        span_fracs_with_idxs = []
+        for (idx, (interval, dim)) in enumerate(zip(phenotype, obs_space)):
+            span_frac = (interval.span / dim.span)
+            assert _SPAN_FRAC_MIN_INCL <= span_frac <= _SPAN_FRAC_MAX_INCL
+            span_fracs_with_idxs.append((idx, span_frac))
+
+        # then sort the span fracs in ascending order
+        sorted_span_fracs_with_idxs = sorted(span_fracs_with_idxs,
+                                             key=lambda tup: tup[1],
+                                             reverse=False)
+        matching_idx_order = [tup[0] for tup in sorted_span_fracs_with_idxs]
         assert len(matching_idx_order) == len(phenotype)
         return matching_idx_order
 
@@ -35,8 +46,8 @@ class Condition:
                 return False
         return True
 
-    def __str__(self):
-        return " && ".join([str(interval) for interval in self._phenotype])
-
     def __len__(self):
         return len(self._phenotype)
+
+    def __str__(self):
+        return " && ".join([str(interval) for interval in self._phenotype])

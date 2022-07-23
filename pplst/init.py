@@ -1,4 +1,3 @@
-from .condition import Condition
 from .hyperparams import get_hyperparam as get_hp
 from .indiv import make_indiv
 from .rng import get_rng
@@ -27,8 +26,7 @@ def _init_rule(encoding, selectable_actions):
 
 
 def _init_rule_condition(encoding):
-    return Condition(alleles=encoding.init_condition_alleles(),
-                     encoding=encoding)
+    return encoding.init_condition()
 
 
 def _init_rule_action(selectable_actions):
