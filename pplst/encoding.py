@@ -38,7 +38,7 @@ class EncodingABC(metaclass=abc.ABCMeta):
 
 class UnorderedBoundEncodingABC(EncodingABC, metaclass=abc.ABCMeta):
     def init_condition(self):
-        num_alleles = len(self._obs_space) * 2
+        num_alleles = (len(self._obs_space) * 2)
         cond_alleles = []
         for dim in self._obs_space:
             (lower, upper) = self._init_alleles_for_dim(dim)
@@ -106,13 +106,13 @@ class IntegerUnorderedBoundEncoding(UnorderedBoundEncodingABC):
         super().__init__(obs_space)
 
     def _init_alleles_for_dim(self, dim):
-        anchor = get_rng().randint(low=dim.lower, high=(dim.upper + 1))
         r_nought = get_hp("r_nought")
-        # rand integer ~ [0, r_nought]
-        lower = anchor - get_rng().randint(low=0, high=(r_nought + 1))
-        upper = anchor + get_rng().randint(low=0, high=(r_nought + 1))
-        lower = max(lower, dim.lower)
-        upper = min(upper, dim.upper)
+        # rand integer ~ [0, r_nought] for lower, upper
+        first = get_rng().randint(low=0, high=(r_nought + 1))
+        second = get_rng().randint(low=0, high=(r_nought + 1))
+        lower = min(first, second)
+        upper = max(first, second)
+        assert lower <= upper
         return (lower, upper)
 
     def calc_condition_generality(self, cond_intervals):
@@ -149,16 +149,19 @@ class RealUnorderedBoundEncoding(UnorderedBoundEncodingABC):
         super().__init__(obs_space)
 
     def _init_alleles_for_dim(self, dim):
-        anchor = get_rng().uniform(low=dim.lower, high=dim.upper)
+        center = get_rng().uniform(low=dim.lower, high=dim.upper)
         # for continuous space, r_nought interpreted as fraction of dim span
-        # over which to draw noise from for lower/upper alleles
+        # over which to draw noise from for span
         r_nought = get_hp("r_nought")
         assert 0.0 < r_nought <= 1.0
-        noise_high = (r_nought * dim.span)
-        lower = anchor - get_rng().uniform(low=0, high=noise_high)
-        upper = anchor + get_rng().uniform(low=0, high=noise_high)
+        spread_high = (r_nought * dim.span)
+        spread = get_rng().uniform(low=0, high=spread_high)
+        lower = (center - spread)
+        upper = (center + spread)
+        # trunc
         lower = max(lower, dim.lower)
         upper = min(upper, dim.upper)
+        assert lower <= upper
         return (lower, upper)
 
     def calc_condition_generality(self, cond_intervals):
