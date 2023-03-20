@@ -46,6 +46,13 @@ class Condition:
                 return False
         return True
 
+    def __eq__(self, other):
+        # encoding must logically be the same implicitly so don't bother to
+        # check.
+        # encoding generates phenotype and matching idx order so also don't
+        # check as implicitly the same
+        return self._alleles == other._alleles
+
     def __len__(self):
         return len(self._phenotype)
 

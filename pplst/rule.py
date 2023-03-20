@@ -78,5 +78,12 @@ class Rule:
         """Strength is computed based on given obs"""
         return self.prediction(aug_obs) - self._payoff_stdev
 
+    def __eq__(self, other):
+        return (self._condition == other._condition and
+                self._action == other._action and
+                np.array_equal(self._weight_vec, other._weight_vec) and
+                self._payoff_var == other._payoff_var and
+                self._payoff_stdev == other._payoff_stdev)
+
     def __str__(self):
         return f"{self._condition} -> {self._action}"
